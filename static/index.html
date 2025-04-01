@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 시맨틱 검색</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --secondary-color: #6b7280;
+            --background-color: #f9fafb;
+            --card-background: #ffffff;
+            --border-color: #e5e7eb;
+            --text-color: #1f2937;
+            --light-text: #6b7280;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        h1, h2, h3 {
+            color: var(--text-color);
+            margin-bottom: 1rem;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        .card {
+            background-color: var(--card-background);
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .status {
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status.ready {
+            background-color: #ecfdf5;
+            color: var(--success-color);
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .status.not-ready {
+            background-color: #fff1f2;
+            color: var(--danger-color);
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .dropzone {
+            border: 2px dashed var(--border-color);
+            border-radius: 0.375rem;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .dropzone:hover {
+            border-color: var(--primary-color);
+            background-color: #f0f9ff;
+        }
+        
+        .dropzone.highlight {
+            border-color: var(--primary-color);
+            background-color: #e0f2fe;
+        }
+        
+        .dropzone p {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .search-bar input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+        }
+        
+        .search-options {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        
+        button:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        select {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background-color: white;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        
+        .file-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background-color: #f3f4f6;
+            border-radius: 0.375rem;
+        }
+        
+        .file-name {
+            font-weight: 500;
+        }
+        
+        .remove-button {
+            background-color: #fee2e2;
+            color: var(--danger-color);
+            padding: 0.25rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        
+        .remove-button:hover {
+            background-color: #fecaca;
+        }
+        
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .result-item {
+            padding: 1.25rem;
+            background-color: white;
+            border-radius: 0.375rem;
+            border-left: 4px solid var(--primary-color);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .result-score {
+            font-size: 0.875rem;
+            color: var(--light-text);
+            background-color: #f3f4f6;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+        }
+        
+        .result-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-color);
+        }
+        
+        .highlight {
+            background-color: #fef3c7;
+            padding: 0.125rem 0;
+            border-radius: 0.125rem;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .file-upload-form {
+            display: none;
+            margin-top: 1rem;
+        }
+        
+        .file-upload-form.active {
+            display: block;
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--light-text);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF 시맨틱 검색</h1>
+    
+    <div class="container">
+        <div id="status" class="status not-ready">시스템 상태 확인 중...</div>
+        
+        <div class="card">
+            <h2>PDF 파일 업로드</h2>
+            <div id="dropzone" class="dropzone">
+                <p>PDF 파일을 여기에 끌어다 놓거나 클릭하여 선택</p>
+                <small>여러 파일을 한 번에 업로드할 수 있습니다</small>
+                <input type="file" id="fileInput" multiple accept=".pdf" style="display: none;" />
+            </div>
+            <div id="file-list" class="file-list"></div>
+            <button id="uploadBtn" disabled>업로드 및 인덱싱</button>
+        </div>
+        
+        <div class="card">
+            <h2>검색</h2>
+            <div class="tabs">
+                <div class="tab active" data-tab="indexed-search">인덱스 검색</div>
+                <div class="tab" data-tab="file-search">파일 검색</div>
+            </div>
+            
+            <div id="indexed-search" class="tab-content active">
+                <div class="search-form">
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" placeholder="검색어를 입력하세요..." />
+                        <button id="searchBtn">검색</button>
+                    </div>
+                    <div class="search-options">
+                        <label for="topK">결과 개수:</label>
+                        <select id="topK">
+                            <option value="3">3</option>
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="file-search" class="tab-content">
+                <p>특정 PDF 파일에서만 검색합니다. 파일은 인덱스에 추가되지 않습니다.</p>
+                <div class="file-upload-form active">
+                    <input type="file" id="singleFileInput" accept=".pdf" />
+                </div>
+                <div class="search-form">
+                    <div class="search-bar">
+                        <input type="text" id="fileSearchInput" placeholder="검색어를 입력하세요..." />
+                        <button id="fileSearchBtn">검색</button>
+                    </div>
+                    <div class="search-options">
+                        <label for="fileTopK">결과 개수:</label>
+                        <select id="fileTopK">
+                            <option value="3">3</option>
+                            <option value="5" selected>5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p id="loading-text">처리 중...</p>
+        </div>
+        
+        <div class="card">
+            <h2>검색 결과</h2>
+            <div id="results" class="results-list"></div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>ko-sroberta-multitask 임베딩 모델과 FAISS를 사용한 한국어 PDF 시맨틱 검색 시스템</p>
+    </div>
+
+    <script>
+        // API 엔드포인트 설정
+        const API_URL = window.location.origin;
+        
+        // 요소 가져오기
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('file-list');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const topKSelect = document.getElementById('topK');
+        const resultsDiv = document.getElementById('results');
+        const statusDiv = document.getElementById('status');
+        const loadingDiv = document.getElementById('loading');
+        const loadingText = document.getElementById('loading-text');
+        const singleFileInput = document.getElementById('singleFileInput');
+        const fileSearchInput = document.getElementById('fileSearchInput');
+        const fileSearchBtn = document.getElementById('fileSearchBtn');
+        const fileTopKSelect = document.getElementById('fileTopK');
+        
+        // 탭 관련
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // 활성 탭 업데이트
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // 탭 컨텐츠 업데이트
+                const tabId = tab.getAttribute('data-tab');
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                    if (content.id === tabId) {
+                        content.classList.add('active');
+                    }
+                });
+            });
+        });
+        
+        let files = [];
+        
+        // 시스템 상태 확인
+        async function checkStatus() {
+            try {
+                const response = await axios.get(`${API_URL}/search/status/`);
+                const data = response.data;
+                
+                if (data.status === 'ready') {
+                    statusDiv.className = 'status ready';
+                    statusDiv.innerHTML = `<span>시스템 준비 완료:</span> ${data.indexed_documents}개 문서, ${data.indexed_chunks}개 청크 인덱싱됨`;
+                } else {
+                    statusDiv.className = 'status not-ready';
+                    statusDiv.innerHTML = '<span>시스템 준비 필요:</span> PDF 파일을 업로드하세요';
+                }
+            } catch (error) {
+                statusDiv.className = 'status not-ready';
+                statusDiv.innerHTML = '<span>서버 오류:</span> 서버에 연결할 수 없습니다';
+                console.error('Status check error:', error);
+            }
+        }
+        
+        // 드래그 앤 드롭 이벤트
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('highlight');
+        });
+        
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('highlight');
+        });
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('highlight');
+            
+            const droppedFiles = e.dataTransfer.files;
+            handleFiles(droppedFiles);
+        });
+        
+        dropzone.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', () => {
+            handleFiles(fileInput.files);
+        });
+        
+        function handleFiles(selectedFiles) {
+            for (const file of selectedFiles) {
+                if (file.type === 'application/pdf') {
+                    if (!files.some(f => f.name === file.name)) {
+                        files.push(file);
+                    }
+                }
+            }
+            updateFileList();
+        }
+        
+        function updateFileList() {
+            fileList.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-button';
+                removeBtn.textContent = '제거';
+                removeBtn.onclick = () => {
+                    files.splice(index, 1);
+                    updateFileList();
+                };
+                
+                fileItem.appendChild(fileName);
+                fileItem.appendChild(removeBtn);
+                fileList.appendChild(fileItem);
+            });
+            
+            uploadBtn.disabled = files.length === 0;
+        }
+        
+        // 파일 업로드
+        uploadBtn.addEventListener('click', async () => {
+            if (files.length === 0) return;
+            
+            showLoading('PDF 파일 업로드 및 인덱싱 중...');
+            
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('files', file);
+            });
+            
+            try {
+                const response = await axios.post(`${API_URL}/upload/pdf/`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                hideLoading();
+                alert(response.data.message || '파일 업로드 및 인덱싱 완료!');
+                files = [];
+                updateFileList();
+                checkStatus();
+            } catch (error) {
+                hideLoading();
+                alert('업로드 중 오류가 발생했습니다: ' + (error.response?.data?.detail || error.message));
+                console.error('Upload error:', error);
+            }
+        });
+        
+        // 인덱스 검색 기능
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+        
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+            
+            const topK = topKSelect.value;
+            
+            showLoading('검색 중...');
+            
+            try {
+                const response = await axios.get(`${API_URL}/search/`, {
+                    params: {
+                        query: query,
+                        top_k: topK
+                    }
+                });
+                
+                displayResults(response.data.results, query);
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                resultsDiv.innerHTML = '<p>검색 중 오류가 발생했습니다: ' + (error.response?.data?.detail || error.message) + '</p>';
+                console.error('Search error:', error);
+            }
+        }
+        
+        // 파일 검색 기능
+        fileSearchBtn.addEventListener('click', performFileSearch);
+        fileSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performFileSearch();
+        });
+        
+        async function performFileSearch() {
+            const query = fileSearchInput.value.trim();
+            if (!query) return;
+            
+            const file = singleFileInput.files[0];
+            if (!file) {
+                alert('검색할 PDF 파일을 선택해주세요.');
+                return;
+            }
+            
+            const topK = fileTopKSelect.value;
+            
+            showLoading('파일 처리 및 검색 중...');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('query', query);
+            formData.append('top_k', topK);
+            
+            try {
+                const response = await axios.post(`${API_URL}/search/file/`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+                
+                displayResults(response.data.results, query, response.data.filename);
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                resultsDiv.innerHTML = '<p>검색 중 오류가 발생했습니다: ' + (error.response?.data?.detail || error.message) + '</p>';
+                console.error('File search error:', error);
+            }
+        }
+        
+        // 결과 표시
+        function displayResults(results, query, filename = null) {
+            if (!results || results.length === 0) {
+                resultsDiv.innerHTML = '<p>검색 결과가 없습니다.</p>';
+                return;
+            }
+            
+            resultsDiv.innerHTML = '';
+            
+            // 검색어 결과 타이틀 추가
+            const resultsTitle = document.createElement('div');
+            resultsTitle.style.marginBottom = '1rem';
+            resultsTitle.innerHTML = `<strong>"${query}"</strong>에 대한 검색 결과 ${filename ? `(파일: ${filename})` : ''}`;
+            resultsDiv.appendChild(resultsTitle);
+            
+            results.forEach((result, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const resultHeader = document.createElement('div');
+                resultHeader.className = 'result-header';
+                
+                const resultTitle = document.createElement('div');
+                resultTitle.className = 'result-title';
+                resultTitle.textContent = `${result.filename} (페이지 ${result.page})`;
+                
+                const resultScore = document.createElement('div');
+                resultScore.className = 'result-score';
+                resultScore.textContent = `유사도: ${(result.similarity * 100).toFixed(1)}%`;
+                
+                resultHeader.appendChild(resultTitle);
+                resultHeader.appendChild(resultScore);
+                
+                const resultText = document.createElement('div');
+                resultText.className = 'result-text';
+                
+                // 쿼리 단어 하이라이트
+                let highlightedText = result.text;
+                const queryTerms = query.split(/\s+/).filter(term => term.length > 1);
+                queryTerms.forEach(term => {
+                    const regex = new RegExp(term, 'gi');
+                    highlightedText = highlightedText.replace(regex, match => 
+                        `<span class="highlight">${match}</span>`);
+                });
+                
+                resultText.innerHTML = highlightedText;
+                
+                resultItem.appendChild(resultHeader);
+                resultItem.appendChild(resultText);
+                resultsDiv.appendChild(resultItem);
+            });
+        }
+        
+        // 로딩 표시/숨기기
+        function showLoading(message) {
+            loadingText.textContent = message || '처리 중...';
+            loadingDiv.style.display = 'flex';
+        }
+        
+        function hideLoading() {
+            loadingDiv.style.display = 'none';
+        }
+        
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+        });
+    </script>
+</body>
+</html>
