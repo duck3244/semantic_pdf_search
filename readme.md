@@ -2,6 +2,9 @@
 
 ko-sroberta-multitask 임베딩 모델과 FAISS를 사용한 한국어 PDF 시맨틱 검색 시스템입니다. CPU 전용으로 최적화되어 있어 GPU가 없는 환경에서도 효율적으로 실행할 수 있습니다.
 
+![Demo](demo_top.png)
+![Demo](demo_bottom.png)
+
 ## 주요 기능
 
 - **PDF 텍스트 추출**: PDF 파일에서 텍스트를 추출하고 의미 있는 청크로 분할
