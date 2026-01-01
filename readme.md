@@ -22,14 +22,7 @@ ko-sroberta-multitask 임베딩 모델과 FAISS를 사용한 한국어 PDF 시�
 
 ## 설치 방법
 
-1. 저장소 클론 또는 다운로드:
-
-```bash
-git clone https://github.com/yourusername/semantic_pdf_search.git
-cd semantic_pdf_search
-```
-
-2. 가상 환경 생성 및 활성화 (선택 사항):
+1. 가상 환경 생성 및 활성화 (선택 사항):
 
 ```bash
 python -m venv venv
@@ -38,7 +31,7 @@ source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate  # Windows
 ```
 
-3. 필요한 패키지 설치:
+2. 필요한 패키지 설치:
 
 ```bash
 pip install -r requirements.txt
